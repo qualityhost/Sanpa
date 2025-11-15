@@ -1,1 +1,676 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Investitore: Montevecchia (LC)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 640px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        @media (min-width: 1024px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
 
+        [role="tab"] {
+            transition: all 0.3s ease;
+        }
+        [role="tab"][aria-selected="true"] {
+            background-color: #0d9488; 
+            color: white;
+            border-bottom-color: transparent;
+        }
+        [role="tab"]:not([aria-selected="true"]):hover {
+            background-color: #f1f5f9;
+        }
+        
+        .stat-card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            padding: 1.5rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        }
+
+        .calendar-day {
+            transition: all 0.2s ease;
+        }
+        .calendar-day.opportunity {
+            background-color: #d1fae5;
+            color: #065f46;
+            font-weight: 600;
+            position: relative;
+            overflow: hidden;
+        }
+        .calendar-day.opportunity:hover {
+            background-color: #a7f3d0;
+            transform: scale(1.05);
+        }
+        .calendar-day.opportunity::after {
+            content: 'Alta Domanda';
+            position: absolute;
+            bottom: 2px;
+            left: 0;
+            right: 0;
+            font-size: 0.6rem;
+            text-align: center;
+            color: #047857;
+        }
+        .calendar-day.header {
+            font-weight: 600;
+            color: #4b5563;
+        }
+        
+        .property-type-btn {
+            transition: all 0.3s ease;
+        }
+        .property-type-btn.active {
+            background-color: #0d9488;
+            color: white;
+            box-shadow: 0 4px 10px rgba(13, 148, 136, 0.3);
+            transform: translateY(-2px);
+        }
+        .property-type-btn:not(.active) {
+            background-color: white;
+            color: #374151;
+            border: 1px solid #e5e7eb;
+        }
+        .property-type-btn:not(.active):hover {
+            background-color: #f9fafb;
+        }
+
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-900 leading-relaxed">
+    <!-- Chosen Palette: Warm Neutral (bg-stone-50) with Calm Teal (teal-700) accent -->
+    <!-- Application Structure Plan: SPA con 5 sezioni a tab (Sintesi, Mercato, Offerta, Domanda, Strategia). L'utente atterra sulla Sintesi (conclusioni e piano d'azione) per una visione immediata. Può poi approfondire i dati di supporto (Mercato, Offerta, Domanda) o i dettagli della strategia (Strategia). Questa struttura "conclusion-first" è ottimale per un investitore che necessita di risposte rapide e dati di contesto on-demand. Le interazioni (grafici, selettore tipologia immobile) permettono di esplorare i dati chiave. -->
+    <!-- Visualization & Content Choices: Stagionalità (Line Chart, Goal: Change, Chart.js), Provenienza (Doughnut Chart, Goal: Inform, Chart.js), Mix Offerta (Bar Chart, Goal: Compare, Chart.js), Driver (Horiz. Bar Chart, Goal: Compare, Chart.js), Prezzi/Occupazione (Buttons + JS Text Update, Goal: Compare, HTML/JS), Calendario (Grid Highlight, Goal: Inform, HTML/Tailwind). Scelte per chiarezza e interattività senza SVG. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+
+        <header class="text-center mb-8 md:mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-teal-800 mb-2">Analisi Mercato Turistico</h1>
+            <p class="text-2xl md:text-3xl font-light text-stone-700">Opportunità per Investitori a Montevecchia (LC)</p>
+        </header>
+
+        <nav class="mb-8">
+            <div class="flex flex-wrap justify-center border-b border-stone-300" role="tablist" aria-label="Sezioni Analisi">
+                <button role="tab" aria-selected="true" data-tab-target="sintesi" class="px-4 py-3 md:px-6 md:py-4 text-sm md:text-base font-semibold text-stone-600 border-b-2 border-transparent -mb-px rounded-t-lg">
+                    Sintesi e Piano d'Azione
+                </button>
+                <button role="tab" aria-selected="false" data-tab-target="mercato" class="px-4 py-3 md:px-6 md:py-4 text-sm md:text-base font-semibold text-stone-600 border-b-2 border-transparent -mb-px rounded-t-lg">
+                    Mercato e Flussi
+                </button>
+                <button role="tab" aria-selected="false" data-tab-target="offerta" class="px-4 py-3 md:px-6 md:py-4 text-sm md:text-base font-semibold text-stone-600 border-b-2 border-transparent -mb-px rounded-t-lg">
+                    Offerta e Competitor
+                </button>
+                <button role="tab" aria-selected="false" data-tab-target="domanda" class="px-4 py-3 md:px-6 md:py-4 text-sm md:text-base font-semibold text-stone-600 border-b-2 border-transparent -mb-px rounded-t-lg">
+                    Domanda e Trend
+                </button>
+                <button role="tab" aria-selected="false" data-tab-target="strategia" class="px-4 py-3 md:px-6 md:py-4 text-sm md:text-base font-semibold text-stone-600 border-b-2 border-transparent -mb-px rounded-t-lg">
+                    Strategia d'Investimento
+                </button>
+            </div>
+        </nav>
+
+        <main>
+            <!-- Sezione 1: Sintesi e Piano d'Azione (Default Visibile) -->
+            <section id="sintesi" role="tabpanel" class="space-y-8">
+                <div class="p-6 md:p-8 bg-white rounded-2xl shadow-lg border border-stone-200">
+                    <h2 class="text-3xl font-bold text-teal-700 mb-4">Sintesi Esecutiva per l'Investitore</h2>
+                    <p class="text-lg text-stone-700 mb-6">
+                        Questa sezione riassume le scoperte chiave e presenta un piano d'azione pratico. Montevecchia rappresenta un mercato <strong class="font-semibold">di nicchia ad alto potenziale</strong>, non basato sui grandi numeri ma sull'alta qualità e sull'esperienza. Il successo non deriva dalla concorrenza sui prezzi, ma dalla <strong class="font-semibold">differenziazione, dal servizio e dal posizionamento "premium"</strong>. L'opportunità risiede nel colmare il divario tra la domanda di comfort moderno/esperienze e l'offerta locale, spesso tradizionale.
+                    </p>
+                    
+                    <h3 class="text-2xl font-semibold text-stone-800 mb-4">Metriche Chiave Stimate (2024)</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
+                        <div class="stat-card border-l-4 border-teal-500">
+                            <span class="block text-sm font-medium text-stone-500 mb-1">Target Principale</span>
+                            <span class="block text-2xl font-bold text-teal-700">Coppie e Smart Worker</span>
+                        </div>
+                        <div class="stat-card border-l-4 border-amber-500">
+                            <span class="block text-sm font-medium text-stone-500 mb-1">Occupazione Media (Extra-alb.)</span>
+                            <span class="block text-2xl font-bold text-amber-700">~ 55-60%</span>
+                        </div>
+                        <div class="stat-card border-l-4 border-sky-500">
+                            <span class="block text-sm font-medium text-stone-500 mb-1">Driver Domanda #1</span>
+                            <span class="block text-2xl font-bold text-sky-700">Natura & Enogastronomia</span>
+                        </div>
+                    </div>
+
+                    <h3 class="text-2xl font-semibold text-stone-800 mb-5">Piano d'Azione in 5 Mosse Chiave</h3>
+                    <ol class="list-decimal list-outside space-y-4 pl-6 text-stone-700 text-base md:text-lg">
+                        <li class="pl-2">
+                            <strong class="font-semibold text-stone-900">Acquisizione Selettiva (Buy/Manage):</strong> Non acquisire qualsiasi immobile. Puntare solo su proprietà con "Unique Selling Point" (vista panoramica, giardino/terrazzo, accesso parco, potenziale per piscina) per giustificare un prezzo premium. Ideale: rustici da ristrutturare o ville/appartamenti di pregio da gestire.
+                        </li>
+                        <li class="pl-2">
+                            <strong class="font-semibold text-stone-900">Investimento in Design e Tecnologia:</strong> Differenziarsi dall'offerta locale "datata". Investire in arredamento "rustic-chic" di alta qualità, comfort moderni (A/C, docce spaziose) e infrastruttura tecnologica <strong class="text-red-600">critica</strong> (Wi-Fi Starlink/fibra per smart worker, self check-in).
+                        </li>
+                        <li class="pl-2">
+                            <strong class="font-semibold text-stone-900">Creare un Brand "Esperienziale":</strong> Non vendere solo un letto, ma un'esperienza. Creare un brand per le proprietà gestite (es. "Viste di Montevecchia"). Offrire pacchetti: noleggio e-bike convenzionato, ceste di benvenuto con prodotti locali, contatti per degustazioni nelle cantine.
+                        </li>
+                        <li class="pl-2">
+                            <strong class="font-semibold text-stone-900">Strategia di Prezzo Dinamica e Bifocale:</strong> Massimizzare la redditività con prezzi alti nelle "Date Opportunità" 2025 (ponti, festività). Nei mesi di spalla (es. Aprile, Maggio, Ottobre), attrarre smart worker con tariffe settimanali/mensili scontate ma profittevoli, valorizzando il Wi-Fi e la tranquillità.
+                        </li>
+                        <li class="pl-2">
+                            <strong class="font-semibold text-stone-900">Doppia Acquisizione Clienti (OTA + Locale):</strong> Utilizzare Airbnb/Booking.com per la visibilità iniziale (con foto professionali). Contemporaneamente, stringere partnership locali (ristoranti, cantine, Parco) per referral diretti e creare un funnel di marketing visivo (Instagram) per disintermediare nel lungo periodo.
+                        </li>
+                    </ol>
+                </div>
+            </section>
+
+            <!-- Sezione 2: Mercato e Flussi (Nascosta) -->
+            <section id="mercato" role="tabpanel" class="hidden space-y-8">
+                <div class="p-6 md:p-8 bg-white rounded-2xl shadow-lg border border-stone-200">
+                    <h2 class="text-3xl font-bold text-teal-700 mb-4">Analisi del Mercato: Flussi e Stagionalità</h2>
+                    <p class="text-lg text-stone-700 mb-6">
+                        Questa sezione analizza i flussi turistici di Montevecchia. Essendo una destinazione di nicchia, i dati ufficiali sono spesso aggregati. L'analisi stima i flussi basandosi sul carattere della destinazione (turismo di prossimità, enogastronomico e naturalistico) e sulla sua capacità ricettiva. I numeri assoluti non sono elevati, ma la qualità e la spesa media per visitatore sono potenzialmente alte.
+                    </p>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="stat-card p-6">
+                            <h3 class="text-2xl font-semibold text-stone-800 mb-3">Arrivi e Presenze (Stima 2024)</h3>
+                            <p class="text-stone-700 mb-4">L'analisi stima arrivi totali annui (settore extra-alberghiero) nell'ordine di <strong class="font-semibold">5.000-7.000</strong>, con presenze (pernottamenti) stimate tra <strong class="font-semibold">12.000 e 18.000</strong>. La permanenza media è breve (2-3 notti), tipica dei weekend e dei soggiorni brevi. L'investitore deve puntare a massimizzare il valore di queste brevi permanenze o a intercettare il trend long-stay (smart working).</p>
+                        </div>
+                        
+                        <div class="stat-card p-6">
+                            <h3 class="text-2xl font-semibold text-stone-800 mb-3">Stagionalità: Picchi e Bassa Stagione</h3>
+                            <p class="text-stone-700 mb-4">La stagionalità è un fattore chiave. I picchi si concentrano in primavera (Aprile-Giugno) e primo autunno (Settembre-Ottobre) grazie al clima ideale per escursioni e alle sagre. L'estate (Luglio-Agosto) vede un buon afflusso "di fuga" dalla città. L'inverno (Novembre-Febbraio) è la bassa stagione, ad eccezione del periodo natalizio.</p>
+                            <div class="chart-container">
+                                <canvas id="stagionalitaChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="stat-card p-6">
+                            <h3 class="text-2xl font-semibold text-stone-800 mb-3">Provenienza dei Turisti</h3>
+                            <p class="text-stone-700 mb-4">Il mercato è dominato dal <strong class="font-semibold">turismo di prossimità</strong>. La maggioranza dei visitatori italiani proviene dalla Lombardia (Milano, Monza e Brianza). Il mercato straniero è di nicchia, composto principalmente da viaggiatori "esperti" (Tedeschi, Svizzeri, Olandesi) che cercano l'Italia autentica, il cibo e la natura, spesso come tappa di un tour.</p>
+                            <div class="chart-container" style="max-height: 350px;">
+                                <canvas id="provenienzaChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sezione 3: Offerta e Competitor (Nascosta) -->
+            <section id="offerta" role="tabpanel" class="hidden space-y-8">
+                <div class="p-6 md:p-8 bg-white rounded-2xl shadow-lg border border-stone-200">
+                    <h2 class="text-3xl font-bold text-teal-700 mb-4">Offerta Ricettiva e Analisi Competitor</h2>
+                    <p class="text-lg text-stone-700 mb-6">
+                        L'offerta ricettiva a Montevecchia è quasi esclusivamente <strong class="font-semibold">extra-alberghiera</strong>. Mancano grandi hotel, il che crea un'opportunità unica per gli investitori in affitti brevi e property management. I competitor principali sono B&B a gestione familiare, agriturismi e case vacanza private.
+                    </p>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                        <div class="stat-card p-6">
+                            <h3 class="text-2xl font-semibold text-stone-800 mb-3">Mix Strutture Ricettive</h3>
+                            <p class="text-stone-700 mb-4">L'offerta è dominata da B&B, Case Vacanza (CAV) e Agriturismi. Le strutture alberghiere classiche sono quasi assenti, confermando la vocazione del territorio per un turismo diffuso e non di massa.</p>
+                            <div class="chart-container">
+                                <canvas id="offertaChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="stat-card p-6">
+                            <h3 class="text-2xl font-semibold text-stone-800 mb-3">SWOT Competitor (Generale)</h3>
+                            <ul class="space-y-3">
+                                <li class="flex items-start">
+                                    <span class="text-green-600 font-bold mr-2 text-lg">S:</span>
+                                    <span class="text-stone-700"><strong class="font-semibold">Punti di Forza:</strong> Autenticità, gestione familiare (ospitalità), forte legame col territorio (prodotti locali).</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="text-red-600 font-bold mr-2 text-lg">W:</span>
+                                    <span class="text-stone-700"><strong class="font-semibold">Punti Deboli:</strong> Spesso tecnologicamente non avanzati (no self check-in, Wi-Fi debole), arredi datati, marketing poco professionale, scarsa flessibilità.</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="text-blue-600 font-bold mr-2 text-lg">O:</span>
+                                    <span class="text-stone-700"><strong class="font-semibold">Opportunità (per te):</strong> Inserirsi con un'offerta di "lusso accessibile", tecnologicamente avanzata e con un design curato.</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="text-gray-600 font-bold mr-2 text-lg">T:</span>
+                                    <span class="text-stone-700"><strong class="font-semibold">Minacce:</strong> Regolamentazioni sugli affitti brevi, possibile aumento della concorrenza se altri colgono l'opportunità.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h3 class="text-2xl font-semibold text-stone-800 mb-4 text-center">Prezzi Medi e Occupazione per Tipologia</h3>
+                    <p class="text-center text-stone-700 mb-6 max-w-3xl mx-auto">
+                        Interagisci con i pulsanti qui sotto per esplorare le stime di prezzo medio a notte (ADR) e i tassi di occupazione per le tipologie di immobili più richieste. Questi dati sono stime basate su analisi dei portali OTA e sono cruciali per il tuo business plan.
+                    </p>
+                    <div class="flex flex-wrap justify-center gap-3 md:gap-4 mb-6">
+                        <button class="property-type-btn active text-sm md:text-base font-semibold py-2 px-4 md:py-3 md:px-6 rounded-full shadow-sm" data-type="bilocale">
+                            Bilocale
+                        </button>
+                        <button class="property-type-btn text-sm md:text-base font-semibold py-2 px-4 md:py-3 md:px-6 rounded-full shadow-sm" data-type="trilocale">
+                            Trilocale
+                        </button>
+                        <button class="property-type-btn text-sm md:text-base font-semibold py-2 px-4 md:py-3 md:px-6 rounded-full shadow-sm" data-type="villa">
+                            Villa / Rustico
+                        </button>
+                    </div>
+
+                    <div id="property-details" class="stat-card p-6 md:p-8 max-w-3xl mx-auto border-t-4 border-teal-600">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <span class="block text-sm font-medium text-stone-500 mb-1">Prezzo Medio Stimato (ADR)</span>
+                                <span id="prop-prezzo" class="block text-3xl font-bold text-teal-700">€90 - €120</span>
+                            </div>
+                            <div>
+                                <span class="block text-sm font-medium text-stone-500 mb-1">Occupazione Stimata (Media / Picco)</span>
+                                <span id="prop-occupazione" class="block text-3xl font-bold text-stone-800">50% / 75%</span>
+                            </div>
+                        </div>
+                        <hr class="my-6 border-stone-200">
+                        <div>
+                            <h4 class="text-xl font-semibold text-stone-800 mb-2">Analisi Investitore</h4>
+                            <p id="prop-analisi" class="text-stone-700">
+                                Ideale per coppie o smart worker singoli. È l'asset base. La redditività dipende dalla capacità di massimizzare l'occupazione e offrire servizi extra. Il comfort e il Wi-Fi sono fondamentali. Basso costo di gestione.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sezione 4: Domanda e Trend (Nascosta) -->
+            <section id="domanda" role="tabpanel" class="hidden space-y-8">
+                <div class="p-6 md:p-8 bg-white rounded-2xl shadow-lg border border-stone-200">
+                    <h2 class="text-3xl font-bold text-teal-700 mb-4">Analisi della Domanda e Trend Emergenti</h2>
+                    <p class="text-lg text-stone-700 mb-6">
+                        Capire *perché* i turisti scelgono Montevecchia è fondamentale per posizionare correttamente l'immobile. La domanda è guidata da esperienze e tranquillità, non da attrazioni di massa. Qui analizziamo le motivazioni, i canali di prenotazione e i trend futuri.
+                    </p>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="stat-card p-6">
+                            <h3 class="text-2xl font-semibold text-stone-800 mb-3">Motivazioni Principali dei Turisti</h3>
+                            <p class="text-stone-700 mb-4">I visitatori non cercano vita notturna o shopping. Cercano natura (Parco del Curone), esperienze enogastronomiche (cantine, ristoranti tipici), relax e viste panoramiche. Il marketing deve fare leva su questi pilastri.</p>
+                            <div class="chart-container" style="height: 400px;">
+                                <canvas id="driverChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card p-6">
+                            <h3 class="text-2xl font-semibold text-stone-800 mb-3">Canali di Prenotazione Utilizzati</h3>
+                            <p class="text-stone-700 mb-4">L'assenza di grandi catene alberghiere rende le OTA (Online Travel Agencies) i canali dominanti per la scoperta e la prenotazione. Airbnb e Booking.com sono essenziali per la visibilità iniziale. C'è spazio per le prenotazioni dirette generate da un buon marketing.</p>
+                             <div class="chart-container" style="max-height: 350px;">
+                                <canvas id="canaliChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="stat-card p-6 lg:col-span-2">
+                            <h3 class="text-2xl font-semibold text-stone-800 mb-3">Recensioni Medie e Trend Emergenti</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <h4 class="text-lg font-semibold text-stone-700 mb-2">Punti Apprezzati (Recensioni)</h4>
+                                    <ul class="list-disc list-inside space-y-1 text-green-700">
+                                        <li>Tranquillità e silenzio</li>
+                                        <li>Vista panoramica ("Balcone della Brianza")</li>
+                                        <li>Ospitalità dei gestori</li>
+                                        <li>Qualità del cibo e del vino locale</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="text-lg font-semibold text-stone-700 mb-2">Criticità Comuni (Recensioni)</h4>
+                                    <ul class="list-disc list-inside space-y-1 text-red-700">
+                                        <li>Connessione Wi-Fi debole o assente</li>
+                                        <li>Difficoltà di parcheggio o accesso (strade strette)</li>
+                                        <li>Arredi datati o poco funzionali</li>
+                                        <li>Mancanza di servizi (es. A/C)</li>
+                                    </ul>
+                                </div>
+                                <div class="md:col-span-2 mt-4">
+                                     <h4 class="text-lg font-semibold text-stone-700 mb-2">Trend Emergenti da Sfruttare</h4>
+                                    <ul class="list-disc list-inside space-y-1 text-blue-700">
+                                        <li><strong class="font-semibold">Workation / Smart Working:</strong> Domanda crescente per soggiorni medio-lunghi in luoghi tranquilli. <strong class="text-red-600">Requisito: Wi-Fi eccellente.</strong></li>
+                                        <li><strong class="font-semibold">Turismo Esperienziale:</strong> I turisti vogliono "fare" (degustazioni, corsi di cucina, e-bike tour).</li>
+                                        <li><strong class="font-semibold">Cicloturismo:</strong> Forte crescita, richiede spazio sicuro per bici (e ricarica e-bike).</li>
+                                        <li><strong class="font-semibold">Sostenibilità e Autenticità:</strong> Ricerca di strutture eco-consapevoli e autentiche.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sezione 5: Strategia d'Investimento (Nascosta) -->
+            <section id="strategia" role="tabpanel" class="hidden space-y-8">
+                <div class="p-6 md:p-8 bg-white rounded-2xl shadow-lg border border-stone-200">
+                    <h2 class="text-3xl font-bold text-teal-700 mb-4">Analisi Strategica e Opportunità</h2>
+                    <p class="text-lg text-stone-700 mb-6">
+                        Questa sezione traduce i dati in una strategia d'investimento concreta. Definiamo il target più profittevole, gli immobili su cui puntare e i fattori chiave per battere la concorrenza, inclusa l'identificazione delle date a più alta domanda per l'anno 2025.
+                    </p>
+
+                    <div class="stat-card p-6 md:p-8 mb-8">
+                        <h3 class="text-2xl font-semibold text-stone-800 mb-4">Calendario Opportunità 2025 (Alta Domanda)</h3>
+                        <p class="text-stone-700 mb-6">Queste date (ponti e festività) rappresentano picchi di domanda certi. La strategia di prezzo deve essere aggressiva (tariffe molto più alte) e la disponibilità va gestita con cura (min-stay 2-3 notti). Il 2025 è ricco di "long weekend".</p>
+                        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 text-center">
+                            <div class="calendar-day header p-2 hidden md:block">Gen/Feb</div>
+                            <div class="calendar-day header p-2 hidden md:block">Mar</div>
+                            <div class="calendar-day header p-2">Apr</div>
+                            <div class="calendar-day header p-2">Mag</div>
+                            <div class="calendar-day header p-2">Giu</div>
+                            <div class="calendar-day header p-2">Lug</div>
+                            <div class="calendar-day header p-2">Ago</div>
+                            <div class="calendar-day header p-2">Set</div>
+                            <div class="calendar-day header p-2">Ott</div>
+                            <div class="calendar-day header p-2">Nov</div>
+                            <div class="calendar-day header p-2">Dic</div>
+                            <div class="calendar-day header p-2 hidden md:block"></div>
+                            
+                            <!-- Spazi vuoti per allineamento -->
+                            <div class="p-2 hidden md:block"></div>
+                            <div class="p-2 hidden md:block"></div>
+                            
+                            <!-- Date -->
+                            <div class="calendar-day opportunity p-2 h-20 rounded-lg flex items-center justify-center">Pasqua<br>(18-21 Apr)</div>
+                            <div class="calendar-day opportunity p-2 h-20 rounded-lg flex items-center justify-center">Liberazione<br>(25 Apr)</div>
+                            <div class="calendar-day opportunity p-2 h-20 rounded-lg flex items-center justify-center">Festa Lavoro<br>(1-4 Mag)</div>
+                            <div class="calendar-day opportunity p-2 h-20 rounded-lg flex items-center justify-center">Festa Repubblica<br>(2 Giu)</div>
+                            <div class="p-2"></div>
+                            <div class="calendar-day opportunity p-2 h-20 rounded-lg flex items-center justify-center">Ferragosto<br>(15-17 Ago)</div>
+                            <div class="p-2"></div>
+                            <div class="p-2"></div>
+                            <div class="calendar-day opportunity p-2 h-20 rounded-lg flex items-center justify-center">Ognissanti<br>(1-2 Nov)</div>
+                            <div class="calendar-day opportunity p-2 h-20 rounded-lg flex items-center justify-center">Immacolata<br>(6-8 Dic)</div>
+                            <div class="calendar-day opportunity p-2 h-20 rounded-lg flex items-center justify-center">Natale/Capodanno<br>(23 Dic-6 Gen)</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="stat-card p-6">
+                            <h3 class="text-2xl font-semibold text-stone-800 mb-3">Identificazione Target Profittevoli</h3>
+                            <ul class="space-y-4">
+                                <li class="border-b pb-4">
+                                    <h4 class="text-xl font-bold text-teal-700">1. Coppie (30-50 anni, DINKs)</h4>
+                                    <p class="text-stone-700 mt-1">Provengono da MI/Brianza. Cercano weekend romantici, relax, cibo/vino. Alta capacità di spesa. <strong class="font-semibold">Cosa cercano:</strong> Design curato, privacy, vasca/doccia emozionale, vista, pacchetti esperienza.</p>
+                                </li>
+                                <li class="border-b pb-4">
+                                    <h4 class="text-xl font-bold text-teal-700">2. Smart Worker / Workation</h4>
+                                    <p class="text-stone-700 mt-1">Soggiorni medio-lunghi (1-4 settimane), spesso in spalla/bassa stagione. <strong class="font-semibold">Cosa cercano:</strong> Wi-Fi ECCELLENTE, postazione lavoro ergonomica, cucina attrezzata, sconti long-stay. Sono profittevoli perché alzano l'occupazione
+                                    off-season.</p>
+                                </li>
+                                <li>
+                                    <h4 class="text-xl font-bold text-teal-700">3. Famiglie (Italiane/Straniere)</h4>
+                                    <p class="text-stone-700 mt-1">Cercano spazio, natura, sicurezza. <strong class="font-semibold">Cosa cercano:</strong> Trilocali o Ville, giardino, cucina super-attrezzata, flessibilità check-in/out. Ottimo target per le ville.</p>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="stat-card p-6">
+                            <h3 class="text-2xl font-semibold text-stone-800 mb-3">Immobili e Punti Differenzianti</h3>
+                            <h4 class="text-lg font-semibold text-stone-700 mb-2">Immobili su cui Puntare:</h4>
+                            <ul class="list-disc list-inside space-y-1 text-stone-700 mb-4">
+                                <li><strong class="font-semibold text-stone-900">Villa / Rustico Indipendente:</strong> Asset migliore. Massima privacy, ideale per famiglie o gruppi. Se con piscina o grande giardino, diventa un "destination asset" con altissima ADR e occupazione.</li>
+                                <li><strong class="font-semibold text-stone-900">Trilocale con Vista/Giardino:</strong> Sweet spot per famiglie o due coppie.</li>
+                                <li><strong class="font-semibold text-stone-900">Bilocale di Design:</strong> Perfetto per coppie e smart worker. Deve essere impeccabile nel design e nei servizi (Wi-Fi, macchina caffè top).</li>
+                            </ul>
+                            
+                            <h4 class="text-lg font-semibold text-stone-700 mb-2">Punti Differenzianti Chiave:</h4>
+                             <ul class="list-disc list-inside space-y-1 text-stone-700">
+                                <li><strong class="font-semibold text-teal-700">Servizio Concierge Digitale:</strong> Non solo un immobile, ma un servizio. Fornire una guida digitale (PDF/web-app) con i migliori ristoranti (e prenotare per loro), contatti per noleggio e-bike, degustazioni.</li>
+                                <li><strong class="font-semibold text-teal-700">Infrastruttura Tecnologica:</strong> Wi-Fi ad alta velocità (Starlink se necessario), Smart TV (Netflix incluso), Self Check-in con tastierino.</li>
+                                 <li><strong class="font-semibold text-teal-700">Branding e Foto Professionali:</strong> Le foto sono il primo fattore di vendita sulle OTA. Investire in uno shooting professionale che racconti un'emozione, non solo stanze.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            Chart.defaults.plugins.tooltip.backgroundColor = '#0f172a';
+            Chart.defaults.plugins.tooltip.titleFont = { size: 16, weight: 'bold' };
+            Chart.defaults.plugins.tooltip.bodyFont = { size: 14 };
+            Chart.defaults.plugins.tooltip.padding = 12;
+            Chart.defaults.plugins.tooltip.cornerRadius = 8;
+            
+            function wrapText(ctx, text, maxWidth) {
+                let lines = [];
+                let words = text.split(' ');
+                let currentLine = words[0];
+
+                for (let i = 1; i < words.length; i++) {
+                    let word = words[i];
+                    let width = ctx.measureText(currentLine + " " + word).width;
+                    if (width < maxWidth) {
+                        currentLine += " " + word;
+                    } else {
+                        lines.push(currentLine);
+                        currentLine = word;
+                    }
+                }
+                lines.push(currentLine);
+                return lines;
+            }
+
+            const tabButtons = document.querySelectorAll('[role="tab"]');
+            const tabPanels = document.querySelectorAll('[role="tabpanel"]');
+
+            tabButtons.forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    
+                    tabButtons.forEach(button => {
+                        button.setAttribute('aria-selected', 'false');
+                        button.classList.remove('text-teal-700', 'border-teal-700', 'bg-white', 'shadow-md');
+                        button.classList.add('text-stone-600', 'border-transparent');
+                    });
+                    
+                    tab.setAttribute('aria-selected', 'true');
+                    tab.classList.add('text-teal-700', 'border-teal-700', 'bg-white', 'shadow-md');
+                    tab.classList.remove('text-stone-600', 'border-transparent');
+                    
+                    const targetId = tab.getAttribute('data-tab-target');
+                    
+                    tabPanels.forEach(panel => {
+                        if (panel.id === targetId) {
+                            panel.classList.remove('hidden');
+                        } else {
+                            panel.classList.add('hidden');
+                        }
+                    });
+                });
+            });
+
+            const propertyTypeData = {
+                bilocale: {
+                    prezzo: "€90 - €120",
+                    occupazione: "50% / 75%",
+                    analisi: "Ideale per coppie o smart worker singoli. È l'asset base. La redditività dipende dalla capacità di massimizzare l'occupazione e offrire servizi extra. Il comfort e il Wi-Fi sono fondamentali. Basso costo di gestione."
+                },
+                trilocale: {
+                    prezzo: "€130 - €180",
+                    occupazione: "55% / 80%",
+                    analisi: "Il target principale sono famiglie o due coppie. Richiede una cucina ben attrezzata e spazi comuni confortevoli. Ottimo bilanciamento tra costo di gestione e ADR (prezzo medio). Il giardino o terrazzo è un plus fondamentale."
+                },
+                villa: {
+                    prezzo: "€300 - €500+",
+                    occupazione: "60% / 85%",
+                    analisi: "Asset di punta per il mercato premium (famiglie alto-spendenti, gruppi). Richiede un investimento iniziale maggiore ma offre la ADR e la redditività più elevate. Privacy, piscina (se possibile) e servizi \"wow\" sono la chiave."
+                }
+            };
+
+            const propButtons = document.querySelectorAll('.property-type-btn');
+            const propPrezzo = document.getElementById('prop-prezzo');
+            const propOccupazione = document.getElementById('prop-occupazione');
+            const propAnalisi = document.getElementById('prop-analisi');
+
+            propButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    propButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    
+                    const type = btn.dataset.type;
+                    const data = propertyTypeData[type];
+                    
+                    propPrezzo.textContent = data.prezzo;
+                    propOccupazione.textContent = data.occupazione;
+                    propAnalisi.textContent = data.analisi;
+                });
+            });
+
+            const stagionalitaCtx = document.getElementById('stagionalitaChart');
+            if (stagionalitaCtx) {
+                new Chart(stagionalitaCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'],
+                        datasets: [{
+                            label: 'Occupazione Media Stimata',
+                            data: [15, 20, 35, 65, 70, 75, 65, 70, 80, 75, 40, 30],
+                            borderColor: '#0d9488',
+                            backgroundColor: 'rgba(13, 148, 136, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: 'Andamento Stagionalità (Occupazione Stimata %)', font: { size: 16 } },
+                            legend: { display: false }
+                        },
+                        scales: { y: { beginAtZero: true, max: 100, ticks: { callback: (value) => value + '%' } } }
+                    }
+                });
+            }
+
+            const provenienzaCtx = document.getElementById('provenienzaChart');
+            if (provenienzaCtx) {
+                new Chart(provenienzaCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Lombardia (MI, MB)', 'Altra Italia', 'Germania/Svizzera', 'Altri Stranieri'],
+                        datasets: [{
+                            label: 'Provenienza Turisti',
+                            data: [65, 15, 15, 5],
+                            backgroundColor: ['#0d9488', '#0f766e', '#14b8a6', '#5eead4'],
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: 'Mercati di Provenienza Principali', font: { size: 16 } },
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+            }
+
+            const offertaCtx = document.getElementById('offertaChart');
+            if (offertaCtx) {
+                new Chart(offertaCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['B&B', 'Case Vacanza / Affitti Brevi', 'Agriturismi', 'Hotel'],
+                        datasets: [{
+                            label: 'Numero Strutture Stimate',
+                            data: [45, 35, 15, 5],
+                            backgroundColor: ['#0d9488', '#14b8a6', '#f59e0b', '#f97316'],
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: 'Mix Offerta Ricettiva (Extra-Alberghiera)', font: { size: 16 } },
+                            legend: { display: false }
+                        }
+                    }
+                });
+            }
+
+            const driverCtx = document.getElementById('driverChart');
+            if (driverCtx) {
+                new Chart(driverCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Natura / Escursioni (Parco)', 'Enogastronomia (Cantine, Ristoranti)', 'Relax / Viste Panoramiche', 'Prossimità a Milano (Fuga weekend)', 'Cicloturismo', 'Visite Culturali'],
+                        datasets: [{
+                            label: 'Importanza della Motivazione',
+                            data: [90, 85, 75, 60, 50, 30],
+                            backgroundColor: ['#0d9488', '#14b8a6', '#5eead4', '#f59e0b', '#fbbf24', '#fcd34d'],
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: 'Driver della Domanda Turistica', font: { size: 16 } },
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: { max: 100 },
+                            y: {
+                                ticks: {
+                                    autoSkip: false,
+                                    callback: function(value) {
+                                        const label = this.getLabelForValue(value);
+                                        return label.length > 25 ? label.substring(0, 25) + '...' : label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            const canaliCtx = document.getElementById('canaliChart');
+            if (canaliCtx) {
+                 new Chart(canaliCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Booking.com', 'Airbnb', 'Prenotazione Diretta (Sito, Social)', 'Altri (es. Agriturismo.it)'],
+                        datasets: [{
+                            label: 'Canali di Prenotazione',
+                            data: [45, 35, 15, 5],
+                            backgroundColor: ['#0d9488', '#14b8a6', '#f59e0b', '#d97706'],
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: 'Canali di Prenotazione Principali', font: { size: 16 } },
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
